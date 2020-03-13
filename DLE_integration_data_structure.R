@@ -18,7 +18,7 @@ DLE.dimension <- setRefClass("DLE.dimension",
               
               # How we fill the gap over years
               rollout   = "data.frame",  # by [grp, region, year] 
-              
+            
               # Indirect final energy intensity by unit of indigrpor (MJ/kcal)
               tei.OP    = "data.frame",  # by [grp, region] : long format (may have elec/non-elec breakdown)
               tei.CON   = "data.frame",
@@ -33,6 +33,7 @@ DLE.dimension <- setRefClass("DLE.dimension",
               #' @description
               #' Derive DLS thresholds from data if not pre-determined
               DeriveThreshold = function() {
+                print("DeriveThreshold: Base")
               },
               
               #' @description
@@ -52,29 +53,40 @@ DLE.dimension <- setRefClass("DLE.dimension",
               },
               
               #' @description
-              #' Construct rollout scenario based on identified gap and other assumptions.(now a dummy)
-              ConstructRolloutScenario = function(yr.target) {
-                yr.now <- as.integer(format(Sys.Date(), "%Y"))
-                n.yr <- yr.target - yr.now
+              #' Construct rollout scenario based on identified gap and other assumptions.
+              #' This can be coded differently for different scenarios.
+              ConstructRolloutScenario = function(scen) {
                 
-                inc <- gap$val/n.yr #seq(0, gap, gap/n.yr)
-                
-                
-                rollout <<- apply(inc, 1, function(x) {
+                if (scen=="BAU") {
+                  print("ConstructRolloutScenario: BAU")
+                }
+                else if (scen=="ACCEL") {
+                  print("ConstructRolloutScenario: ACCEL")
+                }
+                else if (scen=="ACCEL.LCT") {
+                  print("ConstructRolloutScenario: ACCEL.LCT")
+                }
+                else {  # A dummy case (linearly filling the gap)
+                  yr.now <- as.integer(format(Sys.Date(), "%Y"))
+                  yr.target <- 2030  # This can be specified in each scenario too.
+                  n.yr <- yr.target - yr.now
                   
-                } )
+                  inc <- gap$val/n.yr #seq(0, gap, gap/n.yr)
+                  
+                  rollout <<- apply(inc, 1, function(x) {    } )
+                }
               },
               
               #' @description
               #' Update certain parameters
               UpdateParameter = function(par, val) {
-                .self$par <<- val
+                .self$par <<- val   # placeholder
               },
               
               #' @description
               #' (Re)Calculate energy values
               UpdateDLE = function() {
-                DLE.tot <<- (tei.OP+tei.CON) * units
+                DLE.tot <<- (tei.OP+tei.CON) * rollout  # placeholder
               }
               
               )
@@ -90,6 +102,9 @@ DLE.dimension.health <- setRefClass("DLE.dimension.health",
             contains = "DLE.dimension", # inherit the DLE.dimension class
               
             methods = list(
+              
+              #' @description
+              #' Overwrite the same-named function in the superclass to be specific to this dimension
               IdentifyGap = function() {
                 print("IdentifyGap: Health")
                 
@@ -109,7 +124,7 @@ DLE.dimension.health <- setRefClass("DLE.dimension.health",
 DLE.scenario <- setRefClass("DLE.scenario", 
             fields=list(
               
-              #' @field scenario Name of the scenario (e.g. ACCEL, LCT, HIGH, etc.)
+              #' @field scenario Name of the scenario (e.g. BAU, ACCEL, LCT, HIGH, etc.)
               scenario = "character",
               
               #' @field dims List of all DLS dimensions
@@ -133,12 +148,19 @@ DLE.scenario <- setRefClass("DLE.scenario",
               
               # Aggregate sectors (OP/CON)
               Shelter      = "data.frame",
-              Moility.all  = "data.frame",
+              Mobility.all = "data.frame",
               Appliance    = "data.frame",
               Food         = "data.frame"
             ),
             
             methods = list(
+              
+              #' @description
+              #' Set up rollout trajectory for a given scenario
+              SetupRollout = function() {
+                # The scenario-specific rollout can be taken care of in each dimension.
+                lapply(dims, function(x) {x$ConstructRolloutScenario(scenario)})
+              },
               
               #' @description
               #' Aggregate some dimensions in case there's a need.
